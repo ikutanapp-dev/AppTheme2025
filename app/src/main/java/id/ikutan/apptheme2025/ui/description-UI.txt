@@ -1,0 +1,2 @@
+all screen to connect with users.
+This directory contains the UI components and layouts for the application. It includes various screens, widgets, and design elements that define the visual appearance and user experience of the app. The UI components are designed to be responsive and adaptive to different device sizes and orientations, ensuring a seamless interaction for users across all platforms. The focus is on creating an intuitive and engaging interface that enhances usability and accessibility, making it easy for

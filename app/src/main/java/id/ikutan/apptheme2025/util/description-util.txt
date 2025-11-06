@@ -1,0 +1,1 @@
+Package ini berisi kelas-kelas yang bersifat umum dan bisa digunakan di seluruh lapisan aplikasi.

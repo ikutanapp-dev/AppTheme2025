@@ -1,0 +1,1 @@
+Package ini krussial karena Hilt butuh kelas Module untuk mengetahui cara menyediakan dependency (ketergantungan) yang tidak bisa langsung di-inject (seperti Interface ke Implementation, Database, dan Client API).

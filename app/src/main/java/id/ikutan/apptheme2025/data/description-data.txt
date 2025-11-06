@@ -1,0 +1,2 @@
+package to provide all data used in the app.
+online or offline.
