@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "id.ikutan.apptheme2025"
+    namespace = "id.ikutan.TradingRule"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "id.ikutan.apptheme2025"
+        applicationId = "id.ikutan.TradingRule"
         minSdk = 24
         targetSdk = 35
         versionCode = 1
