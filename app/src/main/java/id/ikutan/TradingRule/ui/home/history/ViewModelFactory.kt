@@ -1,4 +1,4 @@
-package id.ikutan.TradingRule.ui.history
+package id.ikutan.TradingRule.ui.home.history
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider

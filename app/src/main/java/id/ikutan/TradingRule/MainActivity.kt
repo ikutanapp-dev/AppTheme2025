@@ -4,9 +4,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -27,12 +29,19 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import id.ikutan.TradingRule.data.local.AppDatabase
 import id.ikutan.TradingRule.data.model.History
-import id.ikutan.TradingRule.ui.history.HistoryViewModel
-import id.ikutan.TradingRule.ui.history.ViewModelFactory
+import id.ikutan.TradingRule.ui.home.history.HistoryViewModel
+import id.ikutan.TradingRule.ui.home.history.ViewModelFactory
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class MainActivity : ComponentActivity() {
 
@@ -47,20 +56,26 @@ class MainActivity : ComponentActivity() {
             val histories by historyViewModel.histories.collectAsState()
             HistoryScreen(
                 histories = histories,
-                onAddHistory = { historyViewModel.insertHistory(it) }
+                onAddHistory = { historyViewModel.insertHistory(it) },
+                onUpdateHistory = { historyViewModel.updateHistory(it) }
             )
         }
     }
 }
 
 @Composable
-fun HistoryScreen(histories: List<History>, onAddHistory: (History) -> Unit) {
-    var showDialog by remember { mutableStateOf(false) }
+fun HistoryScreen(
+    histories: List<History>,
+    onAddHistory: (History) -> Unit,
+    onUpdateHistory: (History) -> Unit
+) {
+    var showAddDialog by remember { mutableStateOf(false) }
+    var selectedHistory by remember { mutableStateOf<History?>(null) }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         floatingActionButton = {
-            FloatingActionButton(onClick = { showDialog = true }) {
+            FloatingActionButton(onClick = { showAddDialog = true }) {
                 Text(text = "+")
             }
         }
@@ -73,20 +88,57 @@ fun HistoryScreen(histories: List<History>, onAddHistory: (History) -> Unit) {
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(histories) { history ->
-                HistoryItem(history = history)
+                HistoryItem(
+                    history = history,
+                    onLongClick = { selectedHistory = it }
+                )
             }
         }
     }
 
-    if (showDialog) {
+    if (showAddDialog) {
         AddHistoryDialog(
-            onDismissRequest = { showDialog = false },
+            onDismissRequest = { showAddDialog = false },
             onConfirmation = {
                 onAddHistory(it)
-                showDialog = false
+                showAddDialog = false
             }
         )
     }
+
+    selectedHistory?.let {
+        UpdateResultDialog(
+            history = it,
+            onDismissRequest = { selectedHistory = null },
+            onConfirmation = { updatedHistory ->
+                onUpdateHistory(updatedHistory)
+                selectedHistory = null
+            }
+        )
+    }
+}
+
+@Composable
+fun UpdateResultDialog(
+    history: History,
+    onDismissRequest: () -> Unit,
+    onConfirmation: (History) -> Unit
+) {
+    AlertDialog(
+        title = { Text(text = "Update Result") },
+        text = { Text(text = "Update the result for ${history.pair}") },
+        onDismissRequest = onDismissRequest,
+        confirmButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = { onConfirmation(history.copy(result = "success")) }) {
+                    Text("Success")
+                }
+                Button(onClick = { onConfirmation(history.copy(result = "failed")) }) {
+                    Text("Failed")
+                }
+            }
+        }
+    )
 }
 
 @Composable
@@ -95,11 +147,11 @@ fun AddHistoryDialog(
     onConfirmation: (History) -> Unit,
 ) {
     var pair by remember { mutableStateOf("btcusdt") }
-    var leverage by remember { mutableStateOf("") }
-    var rule by remember { mutableStateOf("") }
-    var dragdown by remember { mutableStateOf("") }
+    var leverage by remember { mutableStateOf("1") }
+    var rule by remember { mutableStateOf("dippy of dippy") }
+    var dragdown by remember { mutableStateOf("5.0") }
     var status by remember { mutableStateOf("waiting") }
-    var result by remember { mutableStateOf("") }
+    var result by remember { mutableStateOf("-") }
 
     AlertDialog(
         title = { Text(text = "Add New History") },
@@ -124,7 +176,7 @@ fun AddHistoryDialog(
                     value = result,
                     onValueChange = { result = it },
                     label = { Text("Result") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
                 )
             }
         },
@@ -134,11 +186,11 @@ fun AddHistoryDialog(
                 onClick = {
                     val newHistory = History(
                         pair = pair,
-                        leverage = leverage.toIntOrNull() ?: 0,
-                        rule = rule,
-                        dragdown = dragdown.toFloatOrNull() ?: 0f,
+                        leverage = leverage.toIntOrNull() ?: 1,
+                        rule = rule.ifEmpty { "dippy of dippy" },
+                        dragdown = dragdown.toFloatOrNull() ?: 5f,
                         status = status,
-                        result = result.toFloatOrNull() ?: 0f
+                        result = result.ifEmpty { "-" }
                     )
                     onConfirmation(newHistory)
                 }
@@ -155,16 +207,43 @@ fun AddHistoryDialog(
 }
 
 @Composable
-fun HistoryItem(history: History) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+fun HistoryItem(history: History, onLongClick: (History) -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onLongPress = { onLongClick(history) }
+                )
+            }
+    ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = "Pair: ${history.pair}")
-            Text(text = "Timestamp: ${history.timestamp}")
-            Text(text = "Leverage: ${history.leverage}")
-            Text(text = "Rule: ${history.rule}")
-            Text(text = "Dragdown: ${history.dragdown}")
-            Text(text = "Status: ${history.status}")
-            Text(text = "Result: ${history.result}")
+            Text(
+                text = "${history.pair} X${history.leverage}",
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+            )
+            Text(
+                text = formatTimestamp(history.timestamp),
+                fontStyle = FontStyle.Italic
+            )
+            Text(
+                text = "Rule : ${history.rule} -${history.dragdown}%",
+                color = Color.Blue
+            )
+            Text(
+                text = "${history.status} ${history.result}",
+                color = when (history.result.lowercase(Locale.ROOT)) {
+                    "success" -> Color.Green
+                    "failed" -> Color.Red
+                    else -> Color.Black
+                }
+            )
         }
     }
+}
+
+private fun formatTimestamp(timestamp: Long): String {
+    val sdf = SimpleDateFormat("dd-MMM-yyyy, HH.mm", Locale.getDefault())
+    return sdf.format(Date(timestamp))
 }

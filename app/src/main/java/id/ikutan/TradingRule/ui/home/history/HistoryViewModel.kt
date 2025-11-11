@@ -1,4 +1,4 @@
-package id.ikutan.TradingRule.ui.history
+package id.ikutan.TradingRule.ui.home.history
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -20,6 +20,11 @@ class HistoryViewModel(private val historyDao: HistoryDao) : ViewModel() {
     fun insertHistory(history: History) {
         viewModelScope.launch {
             historyDao.insertHistory(history)
+        }
+    }
+    fun updateHistory(history: History) {
+        viewModelScope.launch {
+            historyDao.updateHistory(history)
         }
     }
 }

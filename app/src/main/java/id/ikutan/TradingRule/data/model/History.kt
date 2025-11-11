@@ -9,9 +9,9 @@ data class History(
     val id: Int = 0,
     val pair: String = "btcusdt",
     val timestamp: Long = System.currentTimeMillis(),
-    val leverage: Int,
-    val rule: String,
-    val dragdown: Float,
+    val leverage: Int = 1,
+    val rule: String = "dippy of dippy",
+    val dragdown: Float = 5f,
     val status: String = "waiting",
-    val result: Float
+    val result: String = "-"
 )
