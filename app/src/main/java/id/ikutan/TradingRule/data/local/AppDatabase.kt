@@ -9,7 +9,7 @@ import id.ikutan.TradingRule.data.local.dao.UserDao
 import id.ikutan.TradingRule.data.model.History
 import id.ikutan.TradingRule.data.model.User
 
-@Database(entities = [User::class, History::class], version = 2, exportSchema = false)
+@Database(entities = [User::class, History::class], version = 4, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun userDao(): UserDao

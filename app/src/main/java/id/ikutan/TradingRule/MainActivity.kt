@@ -1,6 +1,7 @@
 package id.ikutan.TradingRule
 
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -16,8 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
@@ -27,10 +26,13 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -66,7 +68,6 @@ class MainActivity : ComponentActivity() {
             val histories by historyViewModel.histories.collectAsState()
             HistoryScreen(
                 histories = histories,
-                onAddHistory = { historyViewModel.insertHistory(it) },
                 onUpdateHistory = { historyViewModel.updateHistory(it) }
             )
         }
@@ -77,11 +78,11 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun HistoryScreen(
     histories: List<History>,
-    onAddHistory: (History) -> Unit,
     onUpdateHistory: (History) -> Unit
 ) {
-    var showAddDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     var showImpactDialog by remember { mutableStateOf(false) }
+    var showParameterDialog by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     var selectedHistory by remember { mutableStateOf<History?>(null) }
 
@@ -90,6 +91,9 @@ fun HistoryScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Trading History") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFFADD8E6) // Light Blue
+                ),
                 actions = {
                     IconButton(onClick = { showMenu = !showMenu }) {
                         Icon(
@@ -103,21 +107,24 @@ fun HistoryScreen(
                     ) {
                         DropdownMenuItem(
                             text = { Text("Impact") },
-                            onClick = { 
+                            onClick = {
                                 showImpactDialog = true
-                                showMenu = false 
+                                showMenu = false
                             }
                         )
                         DropdownMenuItem(
                             text = { Text("Parameter") },
-                            onClick = { /* TODO: Handle Parameter click */ }
+                            onClick = {
+                                showParameterDialog = true
+                                showMenu = false
+                            }
                         )
                     }
                 }
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
+            FloatingActionButton(onClick = { context.startActivity(Intent(context, CalculationActivity::class.java)) }) {
                 Text(text = "+")
             }
         }
@@ -138,18 +145,12 @@ fun HistoryScreen(
         }
     }
 
-    if (showAddDialog) {
-        AddHistoryDialog(
-            onDismissRequest = { showAddDialog = false },
-            onConfirmation = {
-                onAddHistory(it)
-                showAddDialog = false
-            }
-        )
-    }
-
     if (showImpactDialog) {
         ImpactSettingsDialog(onDismissRequest = { showImpactDialog = false })
+    }
+
+    if (showParameterDialog) {
+        ParameterSettingsDialog(onDismissRequest = { showParameterDialog = false })
     }
 
     selectedHistory?.let {
@@ -165,10 +166,56 @@ fun HistoryScreen(
 }
 
 @Composable
+fun ParameterSettingsDialog(onDismissRequest: () -> Unit) {
+    val context = LocalContext.current
+    val sharedPreferences = remember { context.getSharedPreferences("parameter_setting", Context.MODE_PRIVATE) }
+
+    var pair by remember { mutableStateOf(sharedPreferences.getString("pair", "btcusdt") ?: "btcusdt") }
+    var leverage by remember { mutableStateOf(sharedPreferences.getString("leverage", "1") ?: "1") }
+    var rule by remember { mutableStateOf(sharedPreferences.getString("rule", "dippy of dippy") ?: "dippy of dippy") }
+    var dragdown by remember { mutableStateOf(sharedPreferences.getString("dragdown", "5.0") ?: "5.0") }
+    var status by remember { mutableStateOf(sharedPreferences.getString("status", "waiting") ?: "waiting") }
+    var result by remember { mutableStateOf(sharedPreferences.getString("result", "-") ?: "-") }
+
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = { Text(text = "Parameter Settings") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                TextField(value = pair, onValueChange = { pair = it }, label = { Text("Default Pair") })
+                TextField(value = leverage, onValueChange = { leverage = it }, label = { Text("Default Leverage") })
+                TextField(value = rule, onValueChange = { rule = it }, label = { Text("Default Rule") })
+                TextField(value = dragdown, onValueChange = { dragdown = it }, label = { Text("Default Dragdown") })
+                TextField(value = status, onValueChange = { status = it }, label = { Text("Default Status") })
+                TextField(value = result, onValueChange = { result = it }, label = { Text("Default Result") })
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    with(sharedPreferences.edit()) {
+                        putString("pair", pair)
+                        putString("leverage", leverage)
+                        putString("rule", rule)
+                        putString("dragdown", dragdown)
+                        putString("status", status)
+                        putString("result", result)
+                        apply()
+                    }
+                    onDismissRequest()
+                }
+            ) {
+                Text("Save")
+            }
+        }
+    )
+}
+
+@Composable
 fun ImpactSettingsDialog(onDismissRequest: () -> Unit) {
     val context = LocalContext.current
     val sharedPreferences = remember { context.getSharedPreferences("impact_setting", Context.MODE_PRIVATE) }
-    
+
     var smallImpact by remember { mutableStateOf(sharedPreferences.getString("small_impact", "") ?: "") }
     var mediumImpact by remember { mutableStateOf(sharedPreferences.getString("medium_impact", "") ?: "") }
     var highImpact by remember { mutableStateOf(sharedPreferences.getString("high_impact", "") ?: "") }
@@ -235,71 +282,6 @@ fun UpdateResultDialog(
                 Button(onClick = { onConfirmation(history.copy(result = "failed")) }) {
                     Text("Failed")
                 }
-            }
-        }
-    )
-}
-
-@Composable
-fun AddHistoryDialog(
-    onDismissRequest: () -> Unit,
-    onConfirmation: (History) -> Unit,
-) {
-    var pair by remember { mutableStateOf("btcusdt") }
-    var leverage by remember { mutableStateOf("1") }
-    var rule by remember { mutableStateOf("dippy of dippy") }
-    var dragdown by remember { mutableStateOf("5.0") }
-    var status by remember { mutableStateOf("waiting") }
-    var result by remember { mutableStateOf("-") }
-
-    AlertDialog(
-        title = { Text(text = "Add New History") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextField(value = pair, onValueChange = { pair = it }, label = { Text("Pair") })
-                TextField(
-                    value = leverage,
-                    onValueChange = { leverage = it },
-                    label = { Text("Leverage") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
-                TextField(value = rule, onValueChange = { rule = it }, label = { Text("Rule") })
-                TextField(
-                    value = dragdown,
-                    onValueChange = { dragdown = it },
-                    label = { Text("Dragdown") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
-                )
-                TextField(value = status, onValueChange = { status = it }, label = { Text("Status") })
-                TextField(
-                    value = result,
-                    onValueChange = { result = it },
-                    label = { Text("Result") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
-                )
-            }
-        },
-        onDismissRequest = onDismissRequest,
-        confirmButton = {
-            Button(
-                onClick = {
-                    val newHistory = History(
-                        pair = pair,
-                        leverage = leverage.toIntOrNull() ?: 1,
-                        rule = rule.ifEmpty { "dippy of dippy" },
-                        dragdown = dragdown.toFloatOrNull() ?: 5f,
-                        status = status,
-                        result = result.ifEmpty { "-" }
-                    )
-                    onConfirmation(newHistory)
-                }
-            ) {
-                Text("Submit")
-            }
-        },
-        dismissButton = {
-            Button(onClick = onDismissRequest) {
-                Text("Cancel")
             }
         }
     )
